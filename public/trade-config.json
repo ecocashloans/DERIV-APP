@@ -1,6 +1,6 @@
 {
-  "paymentMethod": "Bank Transfer",
-  "tradeId": "TR-88421",
-  "amount": "150.00 USD",
+  "paymentMethod": "Test Bank",
+  "tradeId": "DUR-001",
+  "amount": "10.00 USD",
   "status": "waiting"
 }
