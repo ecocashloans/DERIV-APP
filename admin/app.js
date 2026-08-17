@@ -136,7 +136,11 @@ tradeForm.addEventListener('submit', async (e) => {
     saveStatus.textContent = `Saved at ${new Date(data.savedAt).toLocaleTimeString()}${via}`;
     lastSaved.textContent = `Last saved: ${new Date(data.savedAt).toLocaleString()}`;
     if (data.savedVia === 'github' || (data.savedVia || '').includes('github')) {
-      saveStatus.textContent += ' (live on site immediately; GitHub sync may redeploy)';
+      saveStatus.textContent += ' (permanent in repo; site auto-redeploys)';
+    } else if (data.warn) {
+      saveStatus.textContent += ` ⚠ ${data.warn}`;
+    } else if (data.savedVia === 'memory') {
+      saveStatus.textContent += ' ⚠ Temporary only — set GITHUB_TOKEN in Vercel env for permanent saves';
     }
   } catch (err) {
     showError(saveError, err.message);

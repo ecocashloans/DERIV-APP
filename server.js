@@ -253,6 +253,18 @@ function writeTradeToDisk(trade) {
 
 async function readTradeConfig() {
   if (tradeCache) return { trade: tradeCache, savedAt: tradeCacheSavedAt };
+
+  // On Vercel with a token, GitHub is the source of truth: the deployed
+  // disk copy can be stale between an admin save and the next redeploy.
+  if (IS_VERCEL && GITHUB_TOKEN) {
+    const gh = await readTradeFromGitHub();
+    if (gh && gh.trade) {
+      tradeCache = gh.trade;
+      tradeCacheSavedAt = new Date().toISOString();
+      return { trade: tradeCache, savedAt: tradeCacheSavedAt };
+    }
+  }
+
   const disk = readTradeFromDisk();
   if (disk) {
     tradeCache = disk;
@@ -275,6 +287,7 @@ async function readTradeConfig() {
 async function writeTradeConfig(input) {
   const trade = sanitizeTrade(input);
   let savedVia = 'memory';
+  let warn = '';
 
   // Prefer local disk when writable (local / VPS)
   try {
@@ -289,11 +302,13 @@ async function writeTradeConfig(input) {
       } catch (ghErr) {
         console.warn('GitHub write failed, using in-memory cache:', ghErr.message);
         savedVia = 'memory';
+        warn = `GitHub save failed (${ghErr.code || 'error'}): ${ghErr.message}`;
       }
     } else {
       // Still succeed so admin UI works; values live until this serverless instance cold-starts
       console.warn('No GITHUB_TOKEN; trade save is in-memory only on this instance');
       savedVia = 'memory';
+      warn = 'No GITHUB_TOKEN set: save is temporary (lost on server restart). Set GITHUB_TOKEN in Vercel env for permanent saves.';
     }
   }
 
@@ -304,12 +319,13 @@ async function writeTradeConfig(input) {
       savedVia = 'disk+github';
     } catch (err) {
       console.warn('Optional GitHub sync failed:', err.message);
+      warn = `GitHub sync failed (${err.code || 'error'}): ${err.message}`;
     }
   }
 
   tradeCache = trade;
   tradeCacheSavedAt = new Date().toISOString();
-  return { trade, savedAt: tradeCacheSavedAt, savedVia };
+  return { trade, savedAt: tradeCacheSavedAt, savedVia, warn };
 }
 
 function resolvePublicFile(relPath) {
@@ -439,7 +455,7 @@ app.post('/admin/api/trade', requireAuth, async (req, res) => {
       amount: body.amount != null ? body.amount : current.amount,
       status: body.status != null ? body.status : current.status,
     });
-    res.json({ ok: true, trade: result.trade, savedAt: result.savedAt, savedVia: result.savedVia });
+    res.json({ ok: true, trade: result.trade, savedAt: result.savedAt, savedVia: result.savedVia, warn: result.warn });
   } catch (err) {
     console.error('Failed to save trade config:', err);
     const msg =
