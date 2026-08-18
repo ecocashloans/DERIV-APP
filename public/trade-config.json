@@ -1,6 +1,6 @@
 {
-  "paymentMethod": "United Bank Limited - 0109000298489912",
-  "tradeId": "TR-850509",
-  "amount": "11,111.00 PKR",
+  "paymentMethod": "Apple Pay",
+  "tradeId": "TR-851304",
+  "amount": "20.00 USD",
   "status": "waiting"
 }
